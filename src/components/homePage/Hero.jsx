@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 
 const images = [
   "/images/rooms/living-room1.webp",
@@ -8,36 +8,26 @@ const images = [
 ];
 
 const Hero = () => {
-  const [currentIndex, setCurrentIndex] = useState(0);
-
+  // preload
   useEffect(() => {
-    // preload
     images.forEach((src) => {
       const img = new Image();
       img.src = src;
     });
   }, []);
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentIndex((prev) => (prev + 1) % images.length);
-    }, 5000);
-
-    return () => clearInterval(interval);
-  }, []);
-
   return (
     <section className="relative w-full h-screen overflow-hidden">
-      {/* Images */}
+      {/* Slides */}
       {images.map((src, index) => (
         <img
           key={index}
           src={src}
           alt="room"
-          loading={index === 0 ? "eager" : "lazy"}
-          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${
-            index === currentIndex ? "opacity-100" : "opacity-0"
-          }`}
+          className="absolute inset-0 w-full h-full object-cover animate-slide"
+          style={{
+            animationDelay: `${index * 5}s`,
+          }}
         />
       ))}
 

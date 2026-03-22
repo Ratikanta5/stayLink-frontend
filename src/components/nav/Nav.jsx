@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useLocation as useRouterLocation } from "react-router-dom";
 import logo from "../../assets/logo.png";
 import axios from "axios";
 import { useLocation } from "../../contexts/locationContext/LocationContext";
@@ -14,29 +14,57 @@ const Nav = () => {
   const [loading, setLoading] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
+  // 🔥 NEW: dynamic contrast state
+  const [isDarkBg, setIsDarkBg] = useState(true);
+
   const dropdownRef = useRef();
   const debounceRef = useRef();
 
   const { location, setLocation } = useLocation();
 
+  const routerLocation = useRouterLocation();
+  const isHome = routerLocation.pathname === "/";
+
   // SCROLL DETECTION
   useEffect(() => {
     const handleScroll = () => {
       setScrolled(window.scrollY > 50);
+
+      // 🔥 detect background brightness
+      const hero = document.querySelector("section"); // assumes hero section is first
+      if (hero) {
+        const style = window.getComputedStyle(hero);
+        const bg = style.backgroundColor;
+
+        if (bg) {
+          const rgb = bg.match(/\d+/g);
+          if (rgb) {
+            const brightness =
+              (parseInt(rgb[0]) * 299 +
+                parseInt(rgb[1]) * 587 +
+                parseInt(rgb[2]) * 114) /
+              1000;
+
+            setIsDarkBg(brightness < 128);
+          }
+        }
+      }
     };
 
+    handleScroll(); // run once
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  // NAV LINK STYLE
   const navLinkClass = ({ isActive }) =>
-    scrolled
+    isHome && !scrolled
       ? isActive
-        ? "text-black font-semibold"
-        : "text-gray-700 hover:text-black transition"
-      : isActive
         ? "text-white font-semibold"
-        : "text-gray-200 hover:text-white transition";
+        : "text-gray-200 hover:text-white transition"
+      : isActive
+        ? "text-black font-semibold"
+        : "text-gray-700 hover:text-black transition";
 
   // AUTO LOCATION
   useEffect(() => {
@@ -68,7 +96,7 @@ const Nav = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // SEARCH WITH DEBOUNCE
+  // SEARCH
   useEffect(() => {
     const trimmedQuery = query.trim();
 
@@ -82,7 +110,6 @@ const Nav = () => {
 
     debounceRef.current = setTimeout(async () => {
       setLoading(true);
-
       try {
         const res = await axios.get(
           "https://nominatim.openstreetmap.org/search",
@@ -116,36 +143,42 @@ const Nav = () => {
       } catch (err) {
         console.error("Search error:", err);
       }
-
       setLoading(false);
     }, 500);
 
     return () => clearTimeout(debounceRef.current);
   }, [query]);
 
+  // 🔥 dynamic color
+  const dynamicTextColor =
+    isHome && !scrolled
+      ? isDarkBg
+        ? "text-white"
+        : "text-black"
+      : "text-black";
+
   return (
     <>
       <nav
         className={`w-full fixed top-0 left-0 z-50 transition-all duration-300 ${
-          scrolled ? "bg-white/90 backdrop-blur-md shadow-md" : "bg-transparent"
+          isHome
+            ? scrolled
+              ? "bg-white shadow-md md:bg-white/90 md:backdrop-blur-md"
+              : "bg-transparent"
+            : "bg-white shadow-md"
         }`}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* FLEX (mobile) → GRID (desktop) */}
           <div className="flex md:grid md:grid-cols-3 items-center h-16">
-            {/* Logo */}
+            {/* LOGO */}
             <NavLink to="/" className="flex items-center gap-2">
               <img src={logo} alt="logo" className="w-10 h-10" />
-              <span
-                className={`text-xl font-semibold ${
-                  scrolled ? "text-black" : "text-white"
-                }`}
-              >
+              <span className={`text-xl font-semibold ${dynamicTextColor}`}>
                 StayLink
               </span>
             </NavLink>
 
-            {/* Center Links */}
+            {/* CENTER LINKS */}
             <div className="hidden md:flex justify-center gap-8">
               <NavLink to="/" className={navLinkClass}>
                 Home
@@ -161,28 +194,21 @@ const Nav = () => {
               </NavLink>
             </div>
 
-            {/* Right Section */}
+            {/* RIGHT */}
             <div className="flex items-center justify-end gap-4 relative ml-auto md:ml-0">
-              {/* LOCATION BUTTON */}
+              {/* LOCATION DESKTOP */}
               <div
                 onClick={() => setShowInput(!showInput)}
                 className={`hidden lg:flex items-center gap-2 px-4 py-2 rounded-full cursor-pointer transition shadow-sm w-[180px] overflow-hidden ${
-                  scrolled
-                    ? "bg-gray-100 hover:bg-gray-200 text-black"
-                    : "bg-white/20 backdrop-blur-md text-white hover:bg-white/30"
+                  isHome && !scrolled
+                    ? "bg-white/20 backdrop-blur-md text-white hover:bg-white/30"
+                    : "bg-gray-100 hover:bg-gray-200 text-black"
                 }`}
               >
-                <FiMapPin className="text-lg shrink-0" />
-
-                <div className="flex flex-col leading-tight w-full overflow-hidden">
-                  <span className="text-xs opacity-80 whitespace-nowrap">
-                    Location
-                  </span>
-
-                  <span
-                    title={location?.city}
-                    className="text-sm font-medium truncate w-full"
-                  >
+                <FiMapPin />
+                <div className="flex flex-col w-full overflow-hidden">
+                  <span className="text-xs">Location</span>
+                  <span className="text-sm font-medium truncate">
                     {location?.city && location.city !== "Unknown"
                       ? location.city
                       : "Set location"}
@@ -190,60 +216,10 @@ const Nav = () => {
                 </div>
               </div>
 
-              {/* DROPDOWN */}
-              {showInput && (
-                <div
-                  ref={dropdownRef}
-                  className="absolute top-16 right-0 bg-white shadow-2xl p-4 rounded-xl w-80 z-50 border"
-                >
-                  <input
-                    type="text"
-                    placeholder="Search city..."
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    className="w-full border px-3 py-2 rounded-lg mb-3 focus:outline-none focus:ring-2 focus:ring-[#0f2a3d]"
-                  />
-
-                  <div className="min-h-[150px] max-h-52 overflow-y-auto">
-                    {loading && (
-                      <div className="space-y-2">
-                        {[1, 2, 3].map((_, i) => (
-                          <div
-                            key={i}
-                            className="h-4 bg-gray-200 rounded animate-pulse"
-                          />
-                        ))}
-                      </div>
-                    )}
-
-                    {!loading && results.length === 0 && query.length > 1 && (
-                      <p className="text-sm text-gray-400">No results found</p>
-                    )}
-
-                    {!loading &&
-                      results.map((item, i) => (
-                        <div
-                          key={i}
-                          onClick={() => {
-                            setLocation(item);
-                            setShowInput(false);
-                            setQuery("");
-                          }}
-                          className="p-2 hover:bg-gray-100 cursor-pointer text-sm rounded transition"
-                        >
-                          {item.fullAddress}
-                        </div>
-                      ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Sign In */}
+              {/* SIGN IN */}
               <NavLink
                 to="/login"
-                className={`hidden sm:block ${
-                  scrolled ? "text-black" : "text-white"
-                }`}
+                className={`hidden sm:block ${dynamicTextColor}`}
               >
                 Sign In
               </NavLink>
@@ -251,20 +227,18 @@ const Nav = () => {
               {/* CTA */}
               <NavLink
                 to="/list-property"
-                className={`px-4 py-2 rounded-full text-sm transition ${
-                  scrolled
-                    ? "bg-[#0f2a3d] text-white hover:bg-[#0c2232]"
-                    : "bg-white text-[#0f2a3d] hover:bg-gray-200"
+                className={`px-4 py-2 rounded-full text-sm ${
+                  isHome && !scrolled
+                    ? "bg-white text-[#0f2a3d]"
+                    : "bg-[#0f2a3d] text-white"
                 }`}
               >
                 List Your Space
               </NavLink>
 
-              {/* Mobile Menu Button */}
+              {/* MOBILE MENU BUTTON */}
               <button
-                className={`md:hidden text-2xl ${
-                  scrolled ? "text-black" : "text-white"
-                }`}
+                className={`md:hidden text-2xl ${dynamicTextColor}`}
                 onClick={() => setMenuOpen(!menuOpen)}
               >
                 ☰
@@ -276,20 +250,56 @@ const Nav = () => {
 
       {/* MOBILE MENU */}
       {menuOpen && (
-        <div className="md:hidden bg-white shadow-md px-4 py-4 space-y-4 mt-16">
-          <NavLink to="/" className="block text-gray-700">
+        <div className="md:hidden fixed top-16 left-0 w-full bg-white shadow-md px-4 py-4 space-y-4 z-40">
+          {/* LOCATION MOBILE */}
+          <div
+            onClick={() => setShowInput(!showInput)}
+            className="flex items-center gap-2 border p-2 rounded"
+          >
+            <FiMapPin />
+            <span>
+              {location?.city && location.city !== "Unknown"
+                ? location.city
+                : "Set location"}
+            </span>
+          </div>
+
+          {showInput && (
+            <div className="border p-2 rounded">
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                className="w-full border px-2 py-1 mb-2"
+              />
+              {results.map((item, i) => (
+                <div
+                  key={i}
+                  onClick={() => {
+                    setLocation(item);
+                    setShowInput(false);
+                  }}
+                  className="p-1 text-sm cursor-pointer"
+                >
+                  {item.fullAddress}
+                </div>
+              ))}
+            </div>
+          )}
+
+          <NavLink to="/" className="block">
             Home
           </NavLink>
-          <NavLink to="/listings" className="block text-gray-700">
+          <NavLink to="/listings" className="block">
             Listings
           </NavLink>
-          <NavLink to="/my-requests" className="block text-gray-700">
+          <NavLink to="/my-requests" className="block">
             My Requests
           </NavLink>
-          <NavLink to="/contact" className="block text-gray-700">
+          <NavLink to="/contact" className="block">
             Contact
           </NavLink>
-          <NavLink to="/login" className="block text-gray-700">
+          <NavLink to="/login" className="block">
             Sign In
           </NavLink>
         </div>
