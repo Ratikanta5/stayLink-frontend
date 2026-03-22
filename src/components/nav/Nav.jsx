@@ -13,15 +13,12 @@ const Nav = () => {
   const [showInput, setShowInput] = useState(false);
   const [loading, setLoading] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-
-  // 🔥 NEW: dynamic contrast state
   const [isDarkBg, setIsDarkBg] = useState(true);
 
-  const dropdownRef = useRef();
+  const dropdownRef = useRef(null); // ✅ shared ref
   const debounceRef = useRef();
 
   const { location, setLocation } = useLocation();
-
   const routerLocation = useRouterLocation();
   const isHome = routerLocation.pathname === "/";
 
@@ -30,8 +27,7 @@ const Nav = () => {
     const handleScroll = () => {
       setScrolled(window.scrollY > 50);
 
-      // 🔥 detect background brightness
-      const hero = document.querySelector("section"); // assumes hero section is first
+      const hero = document.querySelector("section");
       if (hero) {
         const style = window.getComputedStyle(hero);
         const bg = style.backgroundColor;
@@ -51,12 +47,11 @@ const Nav = () => {
       }
     };
 
-    handleScroll(); // run once
+    handleScroll();
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // NAV LINK STYLE
   const navLinkClass = ({ isActive }) =>
     isHome && !scrolled
       ? isActive
@@ -85,15 +80,23 @@ const Nav = () => {
       );
   }, [location, setLocation]);
 
-  // CLOSE DROPDOWN
+  // ✅ FIXED OUTSIDE CLICK HANDLER
   useEffect(() => {
     const handleClickOutside = (e) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+      if (!dropdownRef.current) return;
+
+      if (!dropdownRef.current.contains(e.target)) {
         setShowInput(false);
       }
     };
+
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener("touchstart", handleClickOutside); // ✅ mobile fix
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
+    };
   }, []);
 
   // SEARCH
@@ -149,7 +152,6 @@ const Nav = () => {
     return () => clearTimeout(debounceRef.current);
   }, [query]);
 
-  // 🔥 dynamic color
   const dynamicTextColor =
     isHome && !scrolled
       ? isDarkBg
@@ -198,7 +200,10 @@ const Nav = () => {
             <div className="flex items-center justify-end gap-4 relative ml-auto md:ml-0">
               {/* LOCATION DESKTOP */}
               <div
-                onClick={() => setShowInput(!showInput)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowInput((prev) => !prev);
+                }}
                 className={`hidden lg:flex items-center gap-2 px-4 py-2 rounded-full cursor-pointer transition shadow-sm w-[180px] overflow-hidden ${
                   isHome && !scrolled
                     ? "bg-white/20 backdrop-blur-md text-white hover:bg-white/30"
@@ -215,6 +220,46 @@ const Nav = () => {
                   </span>
                 </div>
               </div>
+
+              {/* DESKTOP DROPDOWN */}
+              {showInput && (
+                <div
+                  ref={dropdownRef}
+                  onClick={(e) => e.stopPropagation()}
+                  className="hidden lg:block absolute top-16 right-0 w-80 bg-white shadow-lg rounded-lg p-3 z-50"
+                >
+                  <input
+                    type="text"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Search location..."
+                    className="w-full border px-3 py-2 rounded mb-2"
+                  />
+
+                  {loading && (
+                    <p className="text-sm text-gray-400">Searching...</p>
+                  )}
+
+                  {!loading && results.length === 0 && query.length > 1 && (
+                    <p className="text-sm text-gray-400">No results</p>
+                  )}
+
+                  <div className="max-h-60 overflow-y-auto">
+                    {results.map((item, i) => (
+                      <div
+                        key={i}
+                        onClick={() => {
+                          setLocation(item);
+                          setShowInput(false);
+                        }}
+                        className="p-2 text-sm cursor-pointer hover:bg-gray-100 rounded"
+                      >
+                        {item.fullAddress}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* SIGN IN */}
               <NavLink
@@ -253,7 +298,10 @@ const Nav = () => {
         <div className="md:hidden fixed top-16 left-0 w-full bg-white shadow-md px-4 py-4 space-y-4 z-40">
           {/* LOCATION MOBILE */}
           <div
-            onClick={() => setShowInput(!showInput)}
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowInput((prev) => !prev);
+            }}
             className="flex items-center gap-2 border p-2 rounded"
           >
             <FiMapPin />
@@ -265,13 +313,18 @@ const Nav = () => {
           </div>
 
           {showInput && (
-            <div className="border p-2 rounded">
+            <div
+              ref={dropdownRef}
+              onClick={(e) => e.stopPropagation()}
+              className="border p-2 rounded"
+            >
               <input
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 className="w-full border px-2 py-1 mb-2"
               />
+
               {results.map((item, i) => (
                 <div
                   key={i}

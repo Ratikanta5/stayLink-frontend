@@ -10,7 +10,7 @@ const FeaturedListings = () => {
   const scrollRef = useRef();
   const [isUserScrolling, setIsUserScrolling] = useState(false);
 
-  // ✅ Stable random 10 rooms (NO reshuffle every render)
+  // ✅ Stable random 10 rooms
   const featuredRooms = useMemo(() => {
     if (!rooms || rooms.length === 0) return [];
 
@@ -47,7 +47,7 @@ const FeaturedListings = () => {
     };
   }, []);
 
-  // ✅ Auto scroll (does NOT fight user, does NOT jump to start)
+  // ✅ Auto scroll
   useEffect(() => {
     const container = scrollRef.current;
     if (!container) return;
@@ -55,7 +55,6 @@ const FeaturedListings = () => {
     const interval = setInterval(() => {
       if (isUserScrolling) return;
 
-      // stop at end (no snap-back)
       if (
         container.scrollLeft + container.clientWidth >=
         container.scrollWidth - 5
@@ -75,12 +74,10 @@ const FeaturedListings = () => {
   return (
     <section className="bg-gray-50 min-h-screen py-16 px-6">
       <div className="max-w-7xl mx-auto">
-        {/* Heading */}
         <h1 className="text-3xl font-bold text-center mb-10">
           Featured Listings
         </h1>
 
-        {/* Loading */}
         {loading ? (
           <p className="text-center text-gray-500">Loading rooms...</p>
         ) : (
@@ -90,13 +87,15 @@ const FeaturedListings = () => {
           >
             {featuredRooms.map((room) => (
               <div
-                key={room.id}
-                onClick={() => navigate(`/room/${room.id}`)}
+                key={room._id}
+                onClick={() => navigate(`/room/${room._id}`)}
                 className="min-w-[280px] bg-white rounded-xl shadow hover:shadow-lg transition cursor-pointer"
               >
                 {/* Image */}
                 <img
-                  src={room.image}
+                  src={
+                    room.media?.images?.[0] || "https://via.placeholder.com/400"
+                  }
                   alt={room.title}
                   className="w-full h-48 object-cover rounded-t-xl"
                 />
@@ -107,17 +106,17 @@ const FeaturedListings = () => {
 
                   <p className="text-sm text-gray-500 flex items-center gap-1">
                     <FiMapPin className="text-gray-400" />
-                    {room.city}
+                    {room.location?.area || "Unknown location"}
                   </p>
 
                   <p className="font-bold mt-2 text-[#0f2a3d]">
-                    ₹{room.price}/month
+                    ₹{room.rentDetails?.monthlyRent || 0}/month
                   </p>
 
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      navigate(`/room/${room.id}`);
+                      navigate(`/room/${room._id}`);
                     }}
                     className="mt-3 w-full bg-[#0f2a3d] text-white py-2 rounded-lg hover:bg-[#0c2232]"
                   >

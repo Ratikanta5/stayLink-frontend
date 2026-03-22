@@ -4,7 +4,7 @@ const LocationContext = createContext();
 
 export const LocationProvider = ({ children }) => {
   const [location, setLocation] = useState(null);
-//   console.log(location);
+  // console.log(location);
   
 
   return (
