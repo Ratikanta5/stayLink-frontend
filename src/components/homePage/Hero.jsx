@@ -6,26 +6,42 @@ import room4 from "../../assets/living-rooms/living-room4.jpg";
 
 const Hero = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
+
   const images = [room1, room2, room3, room4];
 
   useEffect(() => {
+    // 🔥 Preload all images (fix flicker)
+    images.forEach((img) => {
+      const image = new Image();
+      image.src = img;
+    });
+
+    // 🔥 Auto slide
     const interval = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % images.length);
-    }, 3000); // change every 3 sec
+    }, 3000);
 
     return () => clearInterval(interval);
-  }, []);
-  return (
-    <section className="relative w-full h-screen">
-      {/* Full Width Background */}
-      <div
-        className="absolute inset-0 bg-cover bg-center transition-all duration-1000"
-        style={{
-          backgroundImage: `url(${images[currentIndex]})`,
-        }}
-      />
+  }, [images.length]);
 
-      {/* Strong Overlay */}
+  return (
+    <section className="relative w-full h-screen overflow-hidden">
+      {/* 🔥 Layered Images (NO backgroundImage switching) */}
+      <div className="absolute inset-0">
+        {images.map((img, index) => (
+          <img
+            key={index}
+            src={img}
+            alt={`room-${index}`}
+            className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ease-in-out ${
+              index === currentIndex ? "opacity-100" : "opacity-0"
+            }`}
+            loading="eager"
+          />
+        ))}
+      </div>
+
+      {/* Overlay */}
       <div className="absolute inset-0 bg-black/60" />
 
       {/* Content */}
@@ -44,34 +60,6 @@ const Hero = () => {
           city. Move in anytime.
         </p>
       </div>
-
-      {/* Floating Search Box */}
-      {/* <div className="absolute bottom-[-50px] w-full flex justify-center px-4 z-20">
-        <div className="bg-white rounded-2xl shadow-2xl p-6 flex flex-col md:flex-row gap-4 w-full max-w-4xl">
-          <div className="flex flex-col flex-1">
-            <label className="text-sm text-gray-500 mb-1">City</label>
-            <select className="border rounded-lg px-3 py-2 focus:outline-none">
-              <option>Select city</option>
-              <option>Mumbai</option>
-              <option>Delhi</option>
-            </select>
-          </div>
-
-          <div className="flex flex-col flex-1">
-            <label className="text-sm text-gray-500 mb-1">Move-in Date</label>
-            <input
-              type="date"
-              className="border rounded-lg px-3 py-2 focus:outline-none"
-            />
-          </div>
-
-          <div className="flex items-end">
-            <button className="bg-[#0f2a3d] text-white px-6 py-2 rounded-lg hover:bg-[#0c2232] transition">
-              Search
-            </button>
-          </div>
-        </div>
-      </div> */}
     </section>
   );
 };
