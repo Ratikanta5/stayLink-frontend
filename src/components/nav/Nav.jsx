@@ -141,7 +141,7 @@ const Nav = () => {
                   scrolled ? "text-black" : "text-white"
                 }`}
               >
-                StayLink
+                StayLink Rudra
               </span>
             </NavLink>
 
